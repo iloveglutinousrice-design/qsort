@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>教师AI素养研究 - Q排序问卷</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"PingFang SC","Microsoft YaHei",sans-serif;background:#f5f5f0;min-height:100vh;color:#1a1a1a}
+.screen{display:none;padding:1.5rem;max-width:860px;margin:0 auto}
+.screen.active{display:block}
+h1{font-size:22px;font-weight:600;color:#1a1a1a;margin-bottom:.5rem}
+p{font-size:15px;color:#555;line-height:1.7}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:8px;border:1px solid #ccc;background:#fff;color:#1a1a1a;font-size:14px;font-weight:500;cursor:pointer;transition:all .15s}
+.btn:hover{background:#f0f0f0}
+.btn-primary{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.btn-primary:hover{background:#333}
+.btn-danger{color:#c0392b;border-color:#c0392b}
+.btn-danger:hover{background:#fff0f0}
+.info-box{background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:1rem 1.25rem;margin:1rem 0}
+input,textarea,select{width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:#fff;color:#1a1a1a;margin-top:6px;font-family:inherit}
+input:focus,textarea:focus{outline:none;border-color:#888}
+label{font-size:13px;color:#666}
+.field{margin-bottom:1.2rem}
+.progress{height:4px;background:#e0e0e0;border-radius:2px;margin:1rem 0}
+.progress-bar{height:100%;background:#1a1a1a;border-radius:2px;transition:width .3s}
+.card-pool{display:flex;flex-wrap:wrap;gap:8px;min-height:80px;padding:12px;background:#ebebeb;border-radius:12px;border:1px solid #ddd}
+.stmt-card{background:#fff;border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:13px;color:#1a1a1a;cursor:grab;max-width:190px;line-height:1.5;user-select:none;transition:box-shadow .15s,transform .1s}
+.stmt-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.1);transform:translateY(-1px)}
+.stmt-card.dragging{opacity:.35}
+.map-wrap{overflow-x:auto;padding-bottom:8px}
+.map-grid{display:flex;gap:6px;min-width:max-content}
+.col-wrap{display:flex;flex-direction:column;align-items:center;gap:4px}
+.col-head{font-size:12px;font-weight:600;padding:5px 8px;border-radius:8px;min-width:110px;text-align:center}
+.col-neg2{background:#FF9999;color:#7A1A1A}
+.col-neg{background:#FFD5D5;color:#8B2020}
+.col-zero{background:#E9E9E9;color:#444}
+.col-pos{background:#C5EFCF;color:#1A5C2A}
+.col-pos2{background:#6FBF8F;color:#0A3020}
+.drop-zone{background:#f9f9f9;border:1.5px dashed #ccc;border-radius:8px;min-height:80px;min-width:110px;padding:4px;display:flex;flex-direction:column;gap:4px;transition:border-color .15s,background .15s}
+.drop-zone.over{border-color:#888;background:#f0f0f0}
+.drop-zone .stmt-card{max-width:none;width:100%}
+.count-badge{font-size:11px;color:#888;text-align:center}
+.admin-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:1rem}
+.admin-table th{text-align:left;padding:10px 8px;border-bottom:1px solid #ddd;color:#666;font-weight:500}
+.admin-table td{padding:10px 8px;border-bottom:1px solid #eee;color:#1a1a1a}
+.stat-card{background:#fff;border-radius:10px;border:1px solid #e0e0e0;padding:1rem;text-align:center}
+.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal{background:#fff;border-radius:12px;padding:2rem;width:90%;max-width:360px}
+</style>
+</head>
+<body>
+
+<!-- 欢迎页 -->
+<div id="s-welcome" class="screen active">
+  <div style="margin:1rem 0 1.5rem">
+    <h1>教师AI素养研究</h1>
+    <p style="margin-top:.5rem">本问卷采用Q排序方法，请根据您的实际情况对卡片进行排序。整个过程约需15分钟。</p>
+  </div>
+  <div class="info-box">
+    <p style="font-size:13px"><strong>操作说明：</strong><br>您将看到25张陈述卡片，请将它们从左到右按"最不符合"（-3）到"最符合"（+3）拖入对应的列，每列有数量限制。</p>
+  </div>
+  <div class="field">
+    <label>您的姓名或编号</label>
+    <input type="text" id="participant-name" placeholder="请输入..." />
+  </div>
+  <button class="btn btn-primary" onclick="startSurvey()">开始排序 →</button>
+  <div style="margin-top:3rem;border-top:1px solid #eee;padding-top:1rem">
+    <button class="btn" onclick="showAdminLogin()" style="font-size:12px;padding:6px 14px;color:#999;border-color:#ddd">管理员入口</button>
+  </div>
+</div>
+
+<!-- 排序页 -->
+<div id="s-sort" class="screen">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+    <h1>拖动卡片到对应列</h1>
+    <span id="remaining-count" style="font-size:13px;color:#888"></span>
+  </div>
+  <div class="progress"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
+  <div class="info-box" style="padding:.75rem 1rem;margin-bottom:1rem">
+    <p style="font-size:13px">从下方卡片池中拖动卡片放入上方对应列。括号内为该列可放数量。全部放完后可进入下一步。</p>
+  </div>
+  <div class="map-wrap">
+    <div class="map-grid" id="map-grid"></div>
+  </div>
+  <div style="margin:1rem 0 .5rem;font-size:13px;color:#666;font-weight:500">待排序卡片</div>
+  <div class="card-pool" id="card-pool"></div>
+  <div style="margin-top:1.5rem;display:flex;justify-content:flex-end">
+    <button class="btn btn-primary" id="next-btn" onclick="goToConfirm()" disabled>下一步 →</button>
+  </div>
+</div>
+
+<!-- 确认页 -->
+<div id="s-confirm" class="screen">
+  <h1>确认您的排序</h1>
+  <p style="margin-top:.5rem">请检查以下排序结果，如需修改请返回。</p>
+  <div id="confirm-grid" style="margin-top:1.5rem;overflow-x:auto"></div>
+  <div style="margin-top:1.5rem;display:flex;gap:8px;justify-content:flex-end">
+    <button class="btn" onclick="showScreen('s-sort')">← 返回修改</button>
+    <button class="btn btn-primary" onclick="showScreen('s-info')">填写基本信息 →</button>
+  </div>
+</div>
+
+<!-- 基本信息页 -->
+<div id="s-info" class="screen">
+  <h1>基本信息</h1>
+  <p style="margin-top:.5rem;margin-bottom:1.5rem">以下为选填信息</p>
+  <div class="field"><label>教龄（年）</label><input type="number" id="f-years" placeholder="例：10" /></div>
+  <div class="field"><label>任教学科</label><input type="text" id="f-subject" placeholder="例：语文" /></div>
+  <div class="field"><label>其他备注</label><textarea id="f-note" rows="3" placeholder="如有其他想说的..."></textarea></div>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem">
+    <button class="btn" onclick="showScreen('s-confirm')">← 返回</button>
+    <button class="btn btn-primary" onclick="submitData()">提交 ✓</button>
+  </div>
+</div>
+
+<!-- 完成页 -->
+<div id="s-done" class="screen">
+  <div style="text-align:center;padding:3rem 1rem">
+    <div style="font-size:56px">✅</div>
+    <h1 style="margin-top:1rem">提交成功，感谢您的参与！</h1>
+    <p style="margin-top:.5rem">您的数据已保存，可以关闭此页面。</p>
+    <button class="btn" style="margin-top:1.5rem" onclick="resetSurvey()">重新开始（新被试）</button>
+  </div>
+</div>
+
+<!-- 管理员登录弹窗 -->
+<div id="admin-modal" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <h2 style="font-size:18px;font-weight:600;margin-bottom:1rem">管理员登录</h2>
+    <div class="field">
+      <label>密码</label>
+      <input type="password" id="admin-pwd" placeholder="请输入管理员密码" onkeydown="if(event.key==='Enter')checkAdmin()" />
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:1rem">
+      <button class="btn" onclick="document.getElementById('admin-modal').style.display='none'">取消</button>
+      <button class="btn btn-primary" onclick="checkAdmin()">登录</button>
+    </div>
+    <p id="admin-err" style="color:#c0392b;font-size:13px;margin-top:.5rem;display:none">密码错误</p>
+  </div>
+</div>
+
+<!-- 管理员面板 -->
+<div id="s-admin" class="screen">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
+    <h1>管理员面板</h1>
+    <button class="btn" onclick="showScreen('s-welcome')">← 返回</button>
+  </div>
+  <div id="admin-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:1.5rem"></div>
+  <div style="display:flex;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap">
+    <button class="btn btn-primary" onclick="exportCSV()">⬇ 导出CSV</button>
+    <button class="btn btn-danger" onclick="clearAllData()">🗑 清空所有数据</button>
+  </div>
+  <div id="admin-content"></div>
+</div>
+
+<script>
+// ===== 配置区 =====
+const ADMIN_PASSWORD = "qsort2024"; // 可修改管理员密码
+const STORAGE_KEY = "qsort_responses_v1";
+
+const STATEMENTS = [
+  {id:1,text:"积极主动学习新技术。"},
+  {id:2,text:"有毅力克服AI使用的困难并持续探索。"},
+  {id:3,text:"理解AI影响下教师角色的变化。"},
+  {id:4,text:"了解AI存在的数据隐私风险。"},
+  {id:5,text:"批判地看待AI所生成内容的准确性和立场。"},
+  {id:6,text:"理解AI在教育中的价值与应用。"},
+  {id:7,text:"具备一定的AI相关知识。"},
+  {id:8,text:"主动参与AI相关的专业发展活动。"},
+  {id:9,text:"利用AI进行专业学习与发展。"},
+  {id:10,text:"利用AI与其他教师开展协作。"},
+  {id:11,text:"利用AI增强与学生、家长等相关人员的沟通。"},
+  {id:12,text:"利用AI进行教学设计。"},
+  {id:13,text:"使用AI获取、开发和管理教学资源。"},
+  {id:14,text:"在课堂中融合AI技术激发学生兴趣。"},
+  {id:15,text:"利用AI分析并改进教学。"},
+  {id:16,text:"使用AI辅助课堂活动组织与管理。"},
+  {id:17,text:"使用AI支持学生自主学习。"},
+  {id:18,text:"使用AI进行课前学情分析。"},
+  {id:19,text:"使用AI进行学习过程数据的记录与分析。"},
+  {id:20,text:"使用AI辅助进行学生学习成果评价。"},
+  {id:21,text:"使用AI发现与解决教学与研究问题。"},
+  {id:22,text:"引导学生正确认识和使用AI。"},
+  {id:23,text:"利用AI促进学生的高阶能力发展。"},
+  {id:24,text:"利用AI基于学生差异进行个性化教学。"},
+  {id:25,text:"利用AI辅助学生心理健康和道德发展。"}
+];
+
+const MAP = [
+  {id:"-3",label:"-3 最不符合",cls:"col-neg2",slots:2},
+  {id:"-2",label:"-2",cls:"col-neg",slots:3},
+  {id:"-1",label:"-1",cls:"col-neg",slots:4},
+  {id:"0",label:"0 中立",cls:"col-zero",slots:7},
+  {id:"+1",label:"+1",cls:"col-pos",slots:4},
+  {id:"+2",label:"+2",cls:"col-pos",slots:3},
+  {id:"+3",label:"+3 最符合",cls:"col-pos2",slots:2}
+];
+
+// ===== 状态 =====
+let placements = {};
+let dragCard = null;
+let participantName = "";
+
+// ===== 通用 =====
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function getResponses(){
+  try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]'); }
+  catch(e){ return []; }
+}
+
+function saveResponses(arr){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+}
+
+// ===== 问卷流程 =====
+function startSurvey(){
+  participantName = document.getElementById('participant-name').value.trim() || "匿名";
+  placements = {};
+  buildSortScreen();
+  showScreen('s-sort');
+}
+
+function buildSortScreen(){
+  const grid = document.getElementById('map-grid');
+  grid.innerHTML = '';
+  MAP.forEach(col => {
+    const wrap = document.createElement('div');
+    wrap.className = 'col-wrap';
+    const head = document.createElement('div');
+    head.className = 'col-head ' + col.cls;
+    head.textContent = col.label + ' (' + col.slots + ')';
+    const zone = document.createElement('div');
+    zone.className = 'drop-zone';
+    zone.dataset.col = col.id;
+    zone.style.minHeight = (col.slots * 58 + 8) + 'px';
+    setupDropZone(zone, false);
+    const badge = document.createElement('div');
+    badge.className = 'count-badge';
+    badge.id = 'badge-' + col.id.replace('+','P').replace('-','N');
+    badge.textContent = '0/' + col.slots;
+    wrap.appendChild(head);
+    wrap.appendChild(zone);
+    wrap.appendChild(badge);
+    grid.appendChild(wrap);
+  });
+
+  const pool = document.getElementById('card-pool');
+  pool.innerHTML = '';
+  [...STATEMENTS].sort(()=>Math.random()-.5).forEach(s => pool.appendChild(makeCard(s)));
+  setupDropZone(pool, true);
+  updateProgress();
+}
+
+function makeCard(stmt){
+  const card = document.createElement('div');
+  card.className = 'stmt-card';
+  card.draggable = true;
+  card.dataset.id = stmt.id;
+  card.textContent = stmt.id + '. ' + stmt.text;
+  card.addEventListener('dragstart', e => {
+    dragCard = card;
+    setTimeout(()=>card.classList.add('dragging'), 0);
+  });
+  card.addEventListener('dragend', ()=>{
+    card.classList.remove('dragging');
+    dragCard = null;
+  });
+  return card;
+}
+
+function setupDropZone(zone, isPool){
+  zone.addEventListener('dragover', e => {
+    e.preventDefault();
+    if(!isPool){
+      const col = MAP.find(c=>c.id===zone.dataset.col);
+      if(zone.querySelectorAll('.stmt-card').length >= col.slots) return;
+    }
+    zone.classList.add('over');
+  });
+  zone.addEventListener('dragleave', ()=>zone.classList.remove('over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('over');
+    if(!dragCard) return;
+    if(!isPool){
+      const col = MAP.find(c=>c.id===zone.dataset.col);
+      if(zone.querySelectorAll('.stmt-card').length >= col.slots) return;
+      placements[dragCard.dataset.id] = zone.dataset.col;
+    } else {
+      delete placements[dragCard.dataset.id];
+    }
+    zone.appendChild(dragCard);
+    updateProgress();
+  });
+}
+
+function updateProgress(){
+  const placed = Object.keys(placements).length;
+  const total = STATEMENTS.length;
+  document.getElementById('progress-bar').style.width = Math.round(placed/total*100) + '%';
+  document.getElementById('remaining-count').textContent = '已排 ' + placed + ' / ' + total;
+  document.getElementById('next-btn').disabled = placed < total;
+  MAP.forEach(col => {
+    const key = 'badge-' + col.id.replace('+','P').replace('-','N');
+    const el = document.getElementById(key);
+    if(!el) return;
+    const zone = document.querySelector('.drop-zone[data-col="'+col.id+'"]');
+    const n = zone ? zone.querySelectorAll('.stmt-card').length : 0;
+    el.textContent = n + '/' + col.slots;
+    el.style.color = n === col.slots ? '#27ae60' : '#888';
+  });
+}
+
+function goToConfirm(){
+  buildConfirmView();
+  showScreen('s-confirm');
+}
+
+function buildConfirmView(){
+  const grid = document.getElementById('confirm-grid');
+  grid.innerHTML = '';
+  const flex = document.createElement('div');
+  flex.style.cssText = 'display:flex;gap:6px;min-width:max-content';
+  MAP.forEach(col => {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;flex-direction:column;gap:4px;align-items:center';
+    const head = document.createElement('div');
+    head.className = 'col-head ' + col.cls;
+    head.style.minWidth = '110px';
+    head.textContent = col.label;
+    wrap.appendChild(head);
+    STATEMENTS.forEach(s => {
+      if(String(placements[s.id]) === col.id){
+        const c = document.createElement('div');
+        c.style.cssText = 'background:#fff;border:1px solid #ddd;border-radius:6px;padding:6px 8px;font-size:11px;width:110px;line-height:1.4;color:#1a1a1a';
+        c.textContent = s.id + '. ' + s.text;
+        wrap.appendChild(c);
+      }
+    });
+    flex.appendChild(wrap);
+  });
+  grid.appendChild(flex);
+}
+
+function submitData(){
+  const record = {
+    name: participantName,
+    time: new Date().toLocaleString('zh-CN'),
+    years: document.getElementById('f-years').value || '',
+    subject: document.getElementById('f-subject').value || '',
+    note: document.getElementById('f-note').value || '',
+    placements: {...placements}
+  };
+  const arr = getResponses();
+  arr.push(record);
+  saveResponses(arr);
+  showScreen('s-done');
+}
+
+function resetSurvey(){
+  document.getElementById('participant-name').value = '';
+  document.getElementById('f-years').value = '';
+  document.getElementById('f-subject').value = '';
+  document.getElementById('f-note').value = '';
+  showScreen('s-welcome');
+}
+
+// ===== 管理员 =====
+function showAdminLogin(){
+  document.getElementById('admin-pwd').value = '';
+  document.getElementById('admin-err').style.display = 'none';
+  document.getElementById('admin-modal').style.display = 'flex';
+}
+
+function checkAdmin(){
+  const pwd = document.getElementById('admin-pwd').value;
+  if(pwd === ADMIN_PASSWORD){
+    document.getElementById('admin-modal').style.display = 'none';
+    loadAdminPanel();
+  } else {
+    document.getElementById('admin-err').style.display = 'block';
+  }
+}
+
+function loadAdminPanel(){
+  const arr = getResponses();
+  document.getElementById('admin-stats').innerHTML =
+    '<div class="stat-card"><div style="font-size:13px;color:#888">已收集</div><div style="font-size:32px;font-weight:600">' + arr.length + '</div><div style="font-size:12px;color:#aaa">份数据</div></div>';
+
+  const content = document.getElementById('admin-content');
+  if(arr.length === 0){
+    content.innerHTML = '<p style="color:#888;font-size:14px;padding:1rem 0">暂无数据</p>';
+  } else {
+    let html = '<table class="admin-table"><thead><tr><th>#</th><th>姓名</th><th>时间</th><th>教龄</th><th>学科</th></tr></thead><tbody>';
+    arr.forEach((r,i) => {
+      html += '<tr><td>'+(i+1)+'</td><td>'+r.name+'</td><td>'+r.time+'</td><td>'+(r.years||'-')+'</td><td>'+(r.subject||'-')+'</td></tr>';
+    });
+    html += '</tbody></table>';
+    content.innerHTML = html;
+  }
+  showScreen('s-admin');
+}
+
+function exportCSV(){
+  const arr = getResponses();
+  if(arr.length === 0){ alert('暂无数据'); return; }
+  const ids = STATEMENTS.map(s=>s.id);
+  const headers = ['姓名','提交时间','教龄','学科','备注',...ids.map(id=>'Q'+id+'得分')];
+  const rows = arr.map(r => {
+    const base = [r.name, r.time, r.years, r.subject, r.note];
+    const scores = ids.map(id => r.placements[id] !== undefined ? r.placements[id] : '');
+    return [...base, ...scores];
+  });
+  const csv = [headers,...rows].map(row=>row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+  const blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'qsort_data_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+}
+
+function clearAllData(){
+  if(!confirm('确定清空所有数据？此操作不可撤销！')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  loadAdminPanel();
+}
+</script>
+</body>
+</html>
